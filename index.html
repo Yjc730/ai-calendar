@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>AI 行事曆 + 看圖聊天（Phi-3 Vision Mini – WebLLM 版）</title>
+  <title>AI 行事曆 + 看圖聊天（LLaVA-Next-4B – WebLLM）</title>
 
+  <!-- WebLLM -->
   <script src="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.51/dist/index.min.js"></script>
 
   <style>
@@ -125,7 +126,7 @@
 <body>
 
   <div class="container">
-    <div class="logo">🛸 AI Schedule（Phi-3 Vision Mini）</div>
+    <div class="logo">🛸 AI Schedule（LLaVA-Next-4B）</div>
     <h1>聊天 + 看圖助手（免 API Key）</h1>
 
     <div id="chat-box"></div>
@@ -142,69 +143,65 @@
   </div>
 
 
-  <script>
-    let chat = null;
-    let imageData = null;
+<script>
+let engine = null;
+let imageData = null;
+const chatBox = document.getElementById("chat-box");
 
-    const chatBox = document.getElementById("chat-box");
+function addMsg(text, type) {
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.textContent = text;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
-    function addMsg(text, type) {
-      const div = document.createElement("div");
-      div.className = "msg " + type;
-      div.textContent = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
+async function loadModel() {
+  addMsg("⏳ 載入 LLaVA-Next-4B 模型中…（約 8～15 秒）", "bot");
 
-    async function loadModel() {
-      addMsg("⏳ 正在載入 Phi-3 Vision Mini 模型…（約 10 秒）", "bot");
+  engine = await webllm.createMLCEngine({
+    model: "LLaVA-NeXT-4B-q4f16_1-MLC",
+    prefix: "https://huggingface.co/mlc-ai/web-llm-models/resolve/main/",
+  });
 
-      chat = await webllm.createMLCEngine({
-        model: "Phi-3-vision-mini-instruct-q4f16_1-MLC",
-        prefix: "https://huggingface.co/mlc-ai/web-llm-models/resolve/main/",
-      });
+  addMsg("✨ 模型載入完成！可以開始聊天囉～", "bot");
+}
 
-      addMsg("✨ 模型已載入完成！可以開始聊天囉～", "bot");
-    }
+document.getElementById("chat-img").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    document.getElementById("chat-img").addEventListener("change", e => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          imageData = reader.result;
-          addMsg("📷 已選取圖片（將一起輸入模型）", "me");
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageData = reader.result;
+    addMsg("📷 已選取圖片", "me");
+  };
+  reader.readAsDataURL(file);
+});
 
-    async function sendChat() {
-      const text = document.getElementById("chat-input").value.trim();
-      if (!text && !imageData) return;
+async function sendChat() {
+  const text = document.getElementById("chat-input").value.trim();
+  if (!text && !imageData) return;
 
-      if (text) addMsg(text, "me");
+  if (text) addMsg(text, "me");
+  document.getElementById("chat-input").value = "";
 
-      document.getElementById("chat-input").value = "";
-      addMsg("⏳ AI 正在思考…", "bot");
+  addMsg("⏳ AI 正在思考…", "bot");
 
-      const prompt = text || "請描述這張圖片。";
+  const messages = [{ role: "user", content: text || "描述這張圖片。" }];
 
-      const reply = await chat.chat({
-        messages: [
-          { role: "user", content: prompt }
-        ],
-        images: imageData ? [imageData] : undefined
-      });
+  const output = await engine.chat({
+    messages: messages,
+    images: imageData ? [imageData] : undefined,
+  });
 
-      addMsg(reply, "bot");
+  addMsg(output, "bot");
+  imageData = null;
+  document.getElementById("chat-img").value = "";
+}
 
-      imageData = null;
-      document.getElementById("chat-img").value = "";
-    }
-
-    loadModel();
-  </script>
+loadModel();
+</script>
 
 </body>
 </html>
