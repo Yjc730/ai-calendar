@@ -2,7 +2,9 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>AI 行事曆 + 聊天助手（HF 匿名版）</title>
+  <title>AI 行事曆 + 看圖聊天（Phi-3 Vision Mini – WebLLM 版）</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.51/dist/index.min.js"></script>
 
   <style>
     body {
@@ -32,13 +34,13 @@
       text-align: center;
       color: #00eaff;
       text-shadow: 0 0 12px #00eaff;
-      margin-bottom: 5px;
+      margin-bottom: 10px;
     }
 
     h1 {
       text-align: center;
       margin-top: 0;
-      font-size: 25px;
+      font-size: 24px;
       color: #8be7ff;
       text-shadow: 0 0 8px #00aaff;
     }
@@ -123,8 +125,8 @@
 <body>
 
   <div class="container">
-    <div class="logo">🛸 AI Schedule（HF 版）</div>
-    <h1>聊天 + 看圖助手</h1>
+    <div class="logo">🛸 AI Schedule（Phi-3 Vision Mini）</div>
+    <h1>聊天 + 看圖助手（免 API Key）</h1>
 
     <div id="chat-box"></div>
 
@@ -139,47 +141,69 @@
     <button onclick="sendChat()">送出</button>
   </div>
 
+
   <script>
-    const HF_API = "https://hf.space/embed/microsoft/LLaVA-Next/+/api/predict/";
+    let chat = null;
+    let imageData = null;
+
+    const chatBox = document.getElementById("chat-box");
 
     function addMsg(text, type) {
-      const box = document.getElementById("chat-box");
-      const msg = document.createElement("div");
-      msg.className = "msg " + type;
-      msg.textContent = text;
-      box.appendChild(msg);
-      box.scrollTop = box.scrollHeight;
+      const div = document.createElement("div");
+      div.className = "msg " + type;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    async function sendChat() {
-      const input = document.getElementById("chat-input");
-      const text = input.value.trim();
-      const img = document.getElementById("chat-img").files[0];
+    async function loadModel() {
+      addMsg("⏳ 正在載入 Phi-3 Vision Mini 模型…（約 10 秒）", "bot");
 
-      if (!text && !img) return;
+      chat = await webllm.createMLCEngine({
+        model: "Phi-3-vision-mini-instruct-q4f16_1-MLC",
+        prefix: "https://huggingface.co/mlc-ai/web-llm-models/resolve/main/",
+      });
+
+      addMsg("✨ 模型已載入完成！可以開始聊天囉～", "bot");
+    }
+
+    document.getElementById("chat-img").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          imageData = reader.result;
+          addMsg("📷 已選取圖片（將一起輸入模型）", "me");
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    async function sendChat() {
+      const text = document.getElementById("chat-input").value.trim();
+      if (!text && !imageData) return;
 
       if (text) addMsg(text, "me");
-      input.value = "";
 
-      addMsg("⏳ AI 正在思考...", "bot");
+      document.getElementById("chat-input").value = "";
+      addMsg("⏳ AI 正在思考…", "bot");
 
-      const fd = new FormData();
-      fd.append("prompt", text || "描述這張圖片");
+      const prompt = text || "請描述這張圖片。";
 
-      if (img) {
-        fd.append("image", img);
-      }
-
-      const res = await fetch(HF_API, { method: "POST", body: fd });
-      const json = await res.json();
-
-      // 新格式：json.data[0]
-      const reply = json.data?.[0] || "（AI 無法回應）";
+      const reply = await chat.chat({
+        messages: [
+          { role: "user", content: prompt }
+        ],
+        images: imageData ? [imageData] : undefined
+      });
 
       addMsg(reply, "bot");
 
+      imageData = null;
       document.getElementById("chat-img").value = "";
     }
+
+    loadModel();
   </script>
 
 </body>
