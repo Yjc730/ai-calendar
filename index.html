@@ -43,7 +43,6 @@
       text-shadow: 0 0 8px #00aaff;
     }
 
-    /* 對話框 */
     #chat-box {
       height: 420px;
       overflow-y: auto;
@@ -78,7 +77,6 @@
       border-bottom-left-radius: 2px;
     }
 
-    /* 下方輸入欄 */
     .chat-area {
       display: flex;
       gap: 10px;
@@ -119,10 +117,6 @@
       cursor: pointer;
       transition: 0.2s;
     }
-    button:hover {
-      background: #00e5ff;
-      box-shadow: 0 0 10px #00e5ff;
-    }
   </style>
 </head>
 
@@ -146,8 +140,7 @@
   </div>
 
   <script>
-    /* 匿名 HuggingFace API（永遠不用金鑰） */
-    const HF_API = "https://llava-next.hf.space/llava/api";
+    const HF_API = "https://hf.space/embed/microsoft/LLaVA-Next/+/api/predict/";
 
     function addMsg(text, type) {
       const box = document.getElementById("chat-box");
@@ -170,25 +163,18 @@
 
       addMsg("⏳ AI 正在思考...", "bot");
 
-      const formData = new FormData();
-      formData.append("prompt", text || "請描述這張圖片");
+      const fd = new FormData();
+      fd.append("prompt", text || "描述這張圖片");
 
       if (img) {
-        formData.append("image", img);
+        fd.append("image", img);
       }
 
-      const res = await fetch(HF_API, {
-        method: "POST",
-        body: formData
-      });
+      const res = await fetch(HF_API, { method: "POST", body: fd });
+      const json = await res.json();
 
-      let reply = "（AI 無法回應）";
-      try {
-        const data = await res.json();
-        reply = data.response || reply;
-      } catch (e) {
-        reply = "AI 回傳格式錯誤，請再試一次";
-      }
+      // 新格式：json.data[0]
+      const reply = json.data?.[0] || "（AI 無法回應）";
 
       addMsg(reply, "bot");
 
